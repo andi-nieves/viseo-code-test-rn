@@ -1,5 +1,5 @@
 import React from 'react';
-import {TextInput as RNTextInput, View, StyleSheet} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 
 const Container = ({children, padding}) => {
   return (

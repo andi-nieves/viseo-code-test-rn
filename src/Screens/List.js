@@ -7,69 +7,38 @@ import {
   View,
   FlatList,
   ScrollView,
-  RefreshControl,
   TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
-import { useDispatch } from 'react-redux'
-import { AuthActions } from '../Redux/Module/'
+import {useDispatch} from 'react-redux';
+import {AuthActions} from '../Redux/Module/';
 import Container from '../Components/Container';
 import TextInput from '../Components/TextInput';
-import {debounce, get} from 'lodash';
+import {debounce, get, uniqBy} from 'lodash';
 import Icon from 'react-native-vector-icons/dist/FontAwesome';
-import useAxios from 'axios-hooks'
-// const data = [
-//   {
-//     id: 0,
-//     name: 'test1',
-//     description: 'This is a test',
-//     owner: {
-//       html_url: 'https://www.facebook.com',
-//       avatar_url: 'https://www.facebook.com',
-//       login: 'andi',
-//     },
-//   },
-//   {
-//     id: 1,
-//     name: 'test2',
-//     description: 'This is a test',
-//     owner: {
-//       html_url: 'https://www.facebook.com',
-//       avatar_url: 'https://www.facebook.com',
-//       login: 'andi',
-//     },
-//   },
-//   {
-//     id: 2,
-//     name: 'test3',
-//     description: 'This is a test',
-//     owner: {
-//       html_url: 'https://www.facebook.com',
-//       avatar_url: 'https://www.facebook.com',
-//       login: 'andi',
-//     },
-//   },
-//   {
-//     id: 3,
-//     name: 'test4',
-//     description: 'This is a test',
-//     owner: {
-//       html_url: 'https://www.facebook.com',
-//       avatar_url: 'https://www.facebook.com',
-//       login: 'andi',
-//     },
-//   },
-// ];
+import useAxios from 'axios-hooks';
+
 const List = ({navigation}) => {
   const dispatch = useDispatch();
   const [query, setQuery] = React.useState('a');
-  const [page, setPage] = React.useState(0)
-  const [{ data, loading }] = useAxios(`https://api.github.com/search/repositories?q=${query}&sort=star&order=asc&per_page=50&page=${page}`)
+  const [page, setPage] = React.useState(0);
+  const [previous, setPrevious] = React.useState(0);
+  const [dataArray, setDataArray] = React.useState([])
+  const [{data, loading}] = useAxios(
+    `https://api.github.com/search/repositories?q=${query}&sort=star&order=asc&per_page=50&page=${page}`,
+  );
+
+  if(previous !== page) {
+    const arr = uniqBy([...dataArray, ...get(data, 'items', [])], 'id');
+    setDataArray(arr);
+    setPrevious(page)
+  }
   const onChangeTextHandler = value => {
     debounce(() => {
-      console.log('values', value);
+      setPage(0)
+      setQuery(value)
     }, 400)();
   };
-  console.log('data', data)
 
   const showItemDetails = data =>
     navigation.navigate('RepoDetailsComponent', {data});
@@ -90,10 +59,9 @@ const List = ({navigation}) => {
 
   const signout = () => {
     dispatch(AuthActions.resetAuth());
-    navigation.navigate('Login')
-  }
+    navigation.navigate('Login');
+  };
 
-  const refetch = () => {};
   return (
     <Container>
       <SafeAreaView style={styles.headerWrapper}>
@@ -108,17 +76,22 @@ const List = ({navigation}) => {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      {loading && <ActivityIndicator />}
       <ScrollView
         style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            progressBackgroundColor="transparent"
-            onRefresh={refetch}
-          />
-        }>
+        scrollEventThrottle={600}
+        onScroll={e => {
+          let paddingToBottom = 10;
+          paddingToBottom += e.nativeEvent.layoutMeasurement.height;
+          if (
+            e.nativeEvent.contentOffset.y >=
+            e.nativeEvent.contentSize.height - paddingToBottom
+          ) {
+            setPage(page + 1);
+          }
+        }}>
         <FlatList
-          data={get(data, 'items', [])}
+          data={dataArray.length === 0 ? get(data, 'items', []) : dataArray}
           renderItem={renderItem}
           keyExtractor={e => e.id}
         />
@@ -126,7 +99,6 @@ const List = ({navigation}) => {
     </Container>
   );
 };
-
 const styles = StyleSheet.create({
   headerWrapper: {
     backgroundColor: '#49e',
@@ -167,7 +139,7 @@ const styles = StyleSheet.create({
   signout: {
     position: 'absolute',
     right: 10,
-    top: 6
-  }
+    top: 6,
+  },
 });
 export default List;
