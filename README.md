@@ -1,9 +1,10 @@
 # viseo-code-test-rn
 
+### Running the app
 yarn or yarn install or yarn i
 
-ios
+### on ios
 react-native run-ios
 
-android
+### on android
 react-native run-android
